@@ -28,33 +28,33 @@ document.addEventListener('DOMContentLoaded', function() {
         section.addEventListener('touchend', (e) => handleSwipe(e.changedTouches[0].clientX));
 
         // 스와이프 처리 함수
+        // ... (기존 코드 유지)
+
+        // 스와이프 처리 함수
         function handleSwipe(endX) {
             const diffX = endX - startX;
             const threshold = 50; // 스와이프로 인식할 최소 거리 (px)
 
-            // 오른쪽으로 스와이프
+            let isSwiped = false;
+
+            // 오른쪽으로 스와이프 (이전 사진)
             if (diffX > threshold) {
-                // 이전 이미지로 이동
-                if (currentIndices[sectionType] > 0) {
-                    currentIndices[sectionType]--;
-                } else {
-                    currentIndices[sectionType] = images.length - 1; // 마지막 이미지로 순환
-                }
-            // 왼쪽으로 스와이프
+                currentIndices[sectionType] = (currentIndices[sectionType] - 1 + images.length) % images.length;
+                isSwiped = true;
+            // 왼쪽으로 스와이프 (다음 사진)
             } else if (diffX < -threshold) {
-                // 다음 이미지로 이동
-                if (currentIndices[sectionType] < images.length - 1) {
-                    currentIndices[sectionType]++;
-                } else {
-                    currentIndices[sectionType] = 0; // 첫 번째 이미지로 순환
-                }
+                currentIndices[sectionType] = (currentIndices[sectionType] + 1) % images.length;
+                isSwiped = true;
             }
-            
-            // 모든 이미지를 현재 인덱스에 맞춰 재배치
-            images.forEach((img, index) => {
-                const newPosition = index - currentIndices[sectionType];
-                img.style.transform = `translateX(${newPosition * 100}%)`;
-            });
+
+            if (isSwiped) {
+                // 모든 이미지를 현재 인덱스에 맞춰 재배치하여 자연스럽게 넘어가게 함
+                images.forEach((img, index) => {
+                    const newPosition = index - currentIndices[sectionType];
+                    img.style.transform = `translateX(${newPosition * 100}%)`;
+                });
+            }
         }
     });
+});
 });
