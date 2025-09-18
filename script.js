@@ -1,60 +1,106 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // 스와이프 이벤트를 감지할 섹션들을 가져옵니다.
     const sections = document.querySelectorAll('.section');
 
-    // 각 섹션의 현재 이미지 인덱스를 저장할 객체
-    const currentIndices = {
-        face: 0,
-        torso: 0,
-        legs: 0
-    };
-
     sections.forEach(section => {
-        let startX = 0;
-        const sectionType = section.classList[1]; // 'face', 'torso', 'legs' 중 하나를 가져옴
+        const originalImages = Array.from(section.querySelectorAll('img'));
+        const totalOriginalImages = originalImages.length;
+        
+        // 이미지 복제: 첫 번째 이미지와 마지막 이미지를 복제하여 양 끝에 추가
+        const lastImageClone = originalImages[totalOriginalImages - 1].cloneNode(true);
+        const firstImageClone = originalImages[0].cloneNode(true);
+        section.insertBefore(lastImageClone, originalImages[0]);
+        section.appendChild(firstImageClone);
+        
         const images = Array.from(section.querySelectorAll('img'));
-
-        // 초기 상태 설정: 첫 번째 이미지만 보이게 함
+        let currentIndex = 1; // 복제된 이미지 때문에 실제 첫 번째 이미지는 인덱스 1
+        let isSwiping = false;
+        let startX = 0;
+        
+        // 초기 위치 설정: 첫 번째 원본 이미지가 보이도록
         images.forEach((img, index) => {
-            img.style.transform = `translateX(${index * 100}%)`;
+            img.style.transform = `translateX(${(index - currentIndex) * 100}%)`;
         });
+        
+        // 터치/마우스 시작
+        const handleStart = (e) => {
+            isSwiping = true;
+            startX = (e.touches ? e.touches[0].clientX : e.clientX);
+            // 애니메이션 비활성화 (실시간 스와이프를 위해)
+            images.forEach(img => img.style.transition = 'none');
+        };
 
-        // 마우스 또는 터치 시작 시
-        section.addEventListener('mousedown', (e) => startX = e.clientX);
-        section.addEventListener('touchstart', (e) => startX = e.touches[0].clientX);
+        // 터치/마우스 움직임
+        const handleMove = (e) => {
+            if (!isSwiping) return;
+            const currentX = (e.touches ? e.touches[0].clientX : e.clientX);
+            const diffX = currentX - startX;
+            const containerWidth = section.offsetWidth;
+            const newOffset = diffX / containerWidth * 100;
+            
+            images.forEach((img, index) => {
+                const imgTranslate = (index - currentIndex) * 100 + newOffset;
+                img.style.transform = `translateX(${imgTranslate}%)`;
+            });
+        };
 
-        // 마우스 또는 터치 끝났을 때
-        section.addEventListener('mouseup', (e) => handleSwipe(e.clientX));
-        section.addEventListener('touchend', (e) => handleSwipe(e.changedTouches[0].clientX));
-
-        // 스와이프 처리 함수
-        // ... (기존 코드 유지)
-
-        // 스와이프 처리 함수
-        function handleSwipe(endX) {
+        // 터치/마우스 끝
+        const handleEnd = (e) => {
+            if (!isSwiping) return;
+            isSwiping = false;
+            
+            const endX = (e.changedTouches ? e.changedTouches[0].clientX : e.clientX);
             const diffX = endX - startX;
-            const threshold = 50; // 스와이프로 인식할 최소 거리 (px)
+            const threshold = section.offsetWidth / 3;
 
-            let isSwiped = false;
-
-            // 오른쪽으로 스와이프 (이전 사진)
-            if (diffX > threshold) {
-                currentIndices[sectionType] = (currentIndices[sectionType] - 1 + images.length) % images.length;
-                isSwiped = true;
-            // 왼쪽으로 스와이프 (다음 사진)
-            } else if (diffX < -threshold) {
-                currentIndices[sectionType] = (currentIndices[sectionType] + 1) % images.length;
-                isSwiped = true;
+            // 스와이프 방향 결정
+            if (diffX > threshold) { // 오른쪽으로 스와이프 (이전 사진)
+                currentIndex--;
+            } else if (diffX < -threshold) { // 왼쪽으로 스와이프 (다음 사진)
+                currentIndex++;
             }
-
-            if (isSwiped) {
-                // 모든 이미지를 현재 인덱스에 맞춰 재배치하여 자연스럽게 넘어가게 함
-                images.forEach((img, index) => {
-                    const newPosition = index - currentIndices[sectionType];
-                    img.style.transform = `translateX(${newPosition * 100}%)`;
-                });
+            
+            // 모든 이미지에 애니메이션 활성화
+            images.forEach(img => img.style.transition = 'transform 0.5s ease-in-out');
+            
+            // 최종 위치로 이동
+            images.forEach((img, index) => {
+                const newPos = (index - currentIndex) * 100;
+                img.style.transform = `translateX(${newPos}%)`;
+            });
+            
+            // 무한 순환을 위한 위치 보정
+            if (currentIndex === 0) {
+                // 맨 처음 클론 사진에 도달하면, 마지막 원본 사진으로 순간 이동
+                currentIndex = totalOriginalImages;
+                setTimeout(() => {
+                    images.forEach(img => img.style.transition = 'none');
+                    images.forEach((img, index) => {
+                        const newPos = (index - currentIndex) * 100;
+                        img.style.transform = `translateX(${newPos}%)`;
+                    });
+                }, 500); // CSS transition 시간(0.5초) 후에 실행
+            } else if (currentIndex === totalOriginalImages + 1) {
+                // 맨 끝 클론 사진에 도달하면, 첫 번째 원본 사진으로 순간 이동
+                currentIndex = 1;
+                setTimeout(() => {
+                    images.forEach(img => img.style.transition = 'none');
+                    images.forEach((img, index) => {
+                        const newPos = (index - currentIndex) * 100;
+                        img.style.transform = `translateX(${newPos}%)`;
+                    });
+                }, 500); // CSS transition 시간(0.5초) 후에 실행
             }
-        }
+        };
+        
+        // 이벤트 리스너 추가
+        section.addEventListener('mousedown', handleStart);
+        section.addEventListener('touchstart', handleStart);
+        section.addEventListener('mousemove', handleMove);
+        section.addEventListener('touchmove', handleMove);
+        section.addEventListener('mouseup', handleEnd);
+        section.addEventListener('touchend', handleEnd);
+        section.addEventListener('mouseleave', () => {
+            if (isSwiping) handleEnd({ clientX: startX });
+        });
     });
-});
 });
